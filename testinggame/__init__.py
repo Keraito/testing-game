@@ -40,39 +40,6 @@ def _find_name_from_blame(blame_line):
     name_components = blame_components[:len(blame_components)-4]
     return ' '.join(name_components)
 
-
-def _find_xctest_tests(blame_lines, names, source, xctestsuperclasses):
-    """
-    Finds the number of XCTest cases per user.
-
-    Args:
-        blame_lines: An array where each index is a string containing the git
-        blame line.
-        names: The current dictionary containing the usernames as a key and the
-        number of tests as a value.
-        source: A string containing the raw source code for the file.
-        xctestsuperclasses: An array containing alternative superclasses for
-        the xctest framework.
-    Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
-    """
-    xctest_identifiers = ['XCTestCase']
-    xctest_identifiers.extend(xctestsuperclasses)
-    contains_test_case = False
-    for xctest_identifier in xctest_identifiers:
-        contains_test_case |= source.find(xctest_identifier) != -1
-        if contains_test_case:
-            break
-    if contains_test_case:
-        for blame_line in blame_lines:
-            if blame_line.replace(' ', '').find('-(void)test') != -1:
-                name = _find_name_from_blame(blame_line)
-                name_count = names.get(name, 0)
-                names[name] = name_count + 1
-    return names
-
-
 def _find_java_tests(blame_lines, names):
     """
     Finds the number of Java test cases per user. This will find tests both
@@ -88,12 +55,25 @@ def _find_java_tests(blame_lines, names):
         key and the number of tests as a value.
     """
     next_is_test = False
+    counter = 0
+    next_is_test_statement = False
+    test_name = ""
     for blame_line in blame_lines:
         separator = blame_line.find(')')
         blame_code_nospaces = blame_line[separator+1:]
+        blame_code_with_spaces = blame_code_nospaces
         blame_code_nospaces = blame_code_nospaces.replace(' ', '')
         blame_code_nospaces = blame_code_nospaces.replace('\t', '')
+        if blame_code_nospaces.startswith('}') and next_is_test_statement:
+            next_is_test_statement = False
+            print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
+            counter = 0
+        if next_is_test_statement:
+            counter += 1
         if next_is_test or blame_code_nospaces.startswith('publicvoidtest'):
+            test_name = _get_test_name(blame_code_with_spaces)
+            next_is_test_statement = True
+            
             name = _find_name_from_blame(blame_line)
             name_count = names.get(name, 0)
             names[name] = name_count + 1
@@ -102,90 +82,11 @@ def _find_java_tests(blame_lines, names):
             next_is_test = blame_code_nospaces.startswith('@Test')
     return names
 
-def _find_cs_tests(blame_lines, names):
-    """
-    Finds the number of C# test cases per user. This will find nUnit tests
-    with the [Test] attribute
 
-    Args:
-        blame_lines: An array where each index is a string containing the git
-        blame line.
-        names: The current dictionary containing the usernames as a key and the
-        number of tests as a value.
-    Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
-    """
-    next_is_test = False
-    for blame_line in blame_lines:
-        separator = blame_line.find(')')
-        blame_code_nospaces = blame_line[separator+1:]
-        blame_code_nospaces = blame_code_nospaces.replace(' ', '')
-        blame_code_nospaces = blame_code_nospaces.replace('\t', '')
-        if next_is_test and blame_code_nospaces.find('{') != -1:
-            next_is_test = False
-        elif next_is_test and blame_code_nospaces.startswith('public'):
-            name = _find_name_from_blame(blame_line)
-            name_count = names.get(name, 0)
-            names[name] = name_count + 1
-            next_is_test = False
-        else:
-            next_is_test = next_is_test or blame_code_nospaces.startswith('[Test]')
-    return names
+def _get_test_name(blame_line):
+    return [i for i in blame_line.split() if "()" in i][0][:-2]
 
-def _find_boost_tests(blame_lines, names):
-    """
-    Finds the number of Boost test cases per user.
-
-    Args:
-        blame_lines: An array where each index is a string containing the git
-        blame line.
-        names: The current dictionary containing the usernames as a key and the
-        number of tests as a value.
-    Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
-    """
-    test_cases = ['BOOST_AUTO_TEST_CASE', 'BOOST_FIXTURE_TEST_CASE']
-    for blame_line in blame_lines:
-        contains_test_case = False
-        for test_case in test_cases:
-            contains_test_case |= blame_line.find(test_case) != -1
-            if contains_test_case:
-                break
-        if contains_test_case:
-            name = _find_name_from_blame(blame_line)
-            name_count = names.get(name, 0)
-            names[name] = name_count + 1
-    return names
-
-
-def _find_python_tests(blame_lines, names, source):
-    """
-    Finds the number of python test cases per user.
-
-    Args:
-        blame_lines: An array where each index is a string containing the git
-        blame line.
-        names: The current dictionary containing the usernames as a key and the
-        number of tests as a value.
-    Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
-    """
-    for blame_line in blame_lines:
-        separator = blame_line.find(')')
-        blame_code_nospaces = blame_line[separator+1:]
-        blame_code_nospaces = blame_code_nospaces.replace(' ', '')
-        blame_code_nospaces = blame_code_nospaces.replace('\t', '')
-        if blame_code_nospaces.startswith('deftest'):
-            name = _find_name_from_blame(blame_line)
-            name_count = names.get(name, 0)
-            names[name] = name_count + 1
-    return names
-
-
-def _find_git_status(directory, xctestsuperclasses):
+def _find_git_status(directory):
     """
     Finds the number of tests per user within a given directory. Note that this
     will only work on the root git subdirectory, submodules will not be
@@ -203,16 +104,9 @@ def _find_git_status(directory, xctestsuperclasses):
     {'Will Sackfield': 6}
     """
     names = {}
-    objc_extensions = ['.m', '.mm']
     java_extensions = ['.java']
-    cpp_extensions = ['.cpp', '.mm']
-    python_extensions = ['.py']
-    cs_extensions = ['.cs']
-    valid_extensions = objc_extensions
-    valid_extensions.extend(java_extensions)
-    valid_extensions.extend(cpp_extensions)
-    valid_extensions.extend(python_extensions)
-    valid_extensions.extend(cs_extensions)
+    valid_extensions = java_extensions
+    # valid_extensions.extend(python_extension)
     for root, dirs, files in os.walk(directory):
         for name in files:
             filename, fileextension = os.path.splitext(name)
@@ -225,25 +119,11 @@ def _find_git_status(directory, xctestsuperclasses):
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
                         out, err = p.communicate()
+                        print out
                         blame_lines = out.splitlines()
-                        if fileextension in objc_extensions:
-                            names = _find_xctest_tests(blame_lines,
-                                                       names,
-                                                       source,
-                                                       xctestsuperclasses)
                         if fileextension in java_extensions:
                             names = _find_java_tests(blame_lines,
                                                      names)
-                        if fileextension in cpp_extensions:
-                            names = _find_boost_tests(blame_lines,
-                                                      names)
-                        if fileextension in python_extensions:
-                            names = _find_python_tests(blame_lines,
-                                                       names,
-                                                       source)
-                        if fileextension in cs_extensions:
-                            names = _find_cs_tests(blame_lines,
-                                                   names)
                 except:
                     'Could not open file: ' + absfile
     return names
@@ -256,11 +136,6 @@ def _main():
                         help='The directory to search for files in',
                         required=False,
                         default=os.getcwd())
-    parser.add_argument('-x',
-                        '--xctestsuperclasses',
-                        help='A comma separated list of XCTest super classes',
-                        required=False,
-                        default='')
     parser.add_argument('-v',
                         '--version',
                         help='Prints the version of testing game',
@@ -271,8 +146,7 @@ def _main():
     if args.version:
         print 'testing game version 1.0.0'
         return
-    xctest_superclasses = args.xctestsuperclasses.replace(' ', '').split(',')
-    names = _find_git_status(args.directory, xctest_superclasses)
+    names = _find_git_status(args.directory)
     total_tests = 0
     for name in names:
         total_tests += names[name]
