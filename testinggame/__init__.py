@@ -24,23 +24,7 @@ import argparse
 import os
 import subprocess
 
-
-def _find_name_from_blame(blame_line):
-    """
-    Finds the name of the committer of code given a blame line from git
-
-    Args:
-        blame_line: A string from the git output of the blame for a file.
-    Returns:
-        The username as a string of the user to blame
-    """
-    blame_info = blame_line[blame_line.find('(')+1:]
-    blame_info = blame_info[:blame_info.find(')')]
-    blame_components = blame_info.split()
-    name_components = blame_components[:len(blame_components)-4]
-    return ' '.join(name_components)
-
-def _find_java_tests(blame_lines, names):
+def _find_java_tests(blame_lines):
     """
     Finds the number of Java test cases per user. This will find tests both
     with the @Test annotation and the standard test methods.
@@ -48,13 +32,12 @@ def _find_java_tests(blame_lines, names):
     Args:
         blame_lines: An array where each index is a string containing the git
         blame line.
-        names: The current dictionary containing the usernames as a key and the
-        number of tests as a value.
     Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
+        A dictionary built off the test class containing the test method name as a
+        key and the number of lines as a value.
     """
     next_is_test = False
+    current_tests = {}
     counter = 0
     next_is_test_statement = False
     test_name = ""
@@ -66,22 +49,18 @@ def _find_java_tests(blame_lines, names):
         blame_code_nospaces = blame_code_nospaces.replace('\t', '')
         if blame_code_nospaces.startswith('}') and next_is_test_statement:
             next_is_test_statement = False
-            print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
+            current_tests[test_name] = counter
+            # print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
             counter = 0
         if next_is_test_statement:
             counter += 1
         if next_is_test or blame_code_nospaces.startswith('publicvoidtest'):
             test_name = _get_test_name(blame_code_with_spaces)
             next_is_test_statement = True
-            
-            name = _find_name_from_blame(blame_line)
-            name_count = names.get(name, 0)
-            names[name] = name_count + 1
             next_is_test = False
         else:
             next_is_test = blame_code_nospaces.startswith('@Test')
-    return names
-
+    return current_tests
 
 def _get_test_name(blame_line):
     return [i for i in blame_line.split() if "()" in i][0][:-2]
@@ -94,19 +73,13 @@ def _find_git_status(directory):
 
     Args:
         directory: The path to the directory to scan.
-        xctestsuperclasses: An array of strings containing names for xctest
-        superclasses.
     Returns:
-        A dictionary built off the names argument containing the usernames as a
-        key and the number of tests as a value.
-
-    >>> _find_git_status('tests', 'SPTTestCase')
-    {'Will Sackfield': 6}
+        A dictionary built off the directory argument containing the class file as a
+        key and dictionary, with the test method as the key and the LOC as a value, as a value.
     """
-    names = {}
+    tests = {}
     java_extensions = ['.java']
     valid_extensions = java_extensions
-    # valid_extensions.extend(python_extension)
     for root, dirs, files in os.walk(directory):
         for name in files:
             filename, fileextension = os.path.splitext(name)
@@ -119,14 +92,12 @@ def _find_git_status(directory):
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
                         out, err = p.communicate()
-                        print out
                         blame_lines = out.splitlines()
                         if fileextension in java_extensions:
-                            names = _find_java_tests(blame_lines,
-                                                     names)
+                            tests[filename] = _find_java_tests(blame_lines)
                 except:
                     'Could not open file: ' + absfile
-    return names
+    return tests
 
 
 def _main():
@@ -146,20 +117,17 @@ def _main():
     if args.version:
         print 'testing game version 1.0.0'
         return
-    names = _find_git_status(args.directory)
+    tests = _find_git_status(args.directory)
     total_tests = 0
-    for name in names:
-        total_tests += names[name]
+    for test_class in tests:
+        total_tests += len(tests[test_class])
     print "Total Tests: %(t)d" % {'t': total_tests}
     print "-------------------------------------------"
-    sorted_list = sorted(names.items(), key=lambda x: x[1], reverse=True)
-    for t in sorted_list:
-        percentage = (float(t[1]) / float(total_tests)) * 100.0
-        t_index = sorted_list.index(t) + 1
-        print "%(i)d. %(n)s, %(t)d (%(p).2f%%)" % {'i': t_index,
-                                                   'n': t[0],
-                                                   't': t[1],
-                                                   'p': percentage}
+    for test_class in tests:
+        print "- %(t)s" % { 't': test_class }
+        for test_method in tests[test_class]:
+            print "    - %(c)d lines in %(m)s." % { 'c': tests[test_class][test_method],
+                                                    'm': test_method}
 
 if __name__ == "__main__":
     _main()
