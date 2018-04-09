@@ -25,6 +25,7 @@ import os
 import subprocess
 import numpy as np
 import random
+import json
 
 def _find_java_tests(blame_lines):
     """
@@ -44,6 +45,7 @@ def _find_java_tests(blame_lines):
     next_is_test_statement = False
     test_name = ""
     improved_current_tests = []
+    code = []
     for blame_line in blame_lines:
         separator = blame_line.find(')')
         blame_code_nospaces = blame_line[separator+1:]
@@ -52,14 +54,18 @@ def _find_java_tests(blame_lines):
         blame_code_nospaces = blame_code_nospaces.replace('\t', '')
         if blame_code_nospaces.startswith('}') and next_is_test_statement:
             next_is_test_statement = False
-            improved_current_tests.append({ "method": test_name, "loc": counter })
+            code.append(blame_code_with_spaces)
+            improved_current_tests.append({ "method": test_name, "loc": counter, "code": code })
+            code = []
             current_tests[test_name] = counter
             # print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
             counter = 0
         if next_is_test_statement:
             counter += 1
+            code.append(blame_code_with_spaces)
         if next_is_test or blame_code_nospaces.startswith('publicvoidtest'):
             test_name = _get_test_name(blame_code_with_spaces)
+            code.append(blame_code_with_spaces)
             next_is_test_statement = True
             next_is_test = False
         else:
@@ -107,6 +113,13 @@ def _find_git_status(directory):
                     'Could not open file: ' + absfile
     return improved_tests
 
+def _write_to_file(data, project_name, save_path):
+    file_name = 'data'
+    if project_name:
+        file_name = project_name
+    with open(save_path + file_name + '.json', 'w') as fp:
+        json.dump(data, fp)
+        fp.close()
 
 def _main():
     parser = argparse.ArgumentParser()
@@ -121,11 +134,25 @@ def _main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-s',
+                        '--save',
+                        help='Where to save the resulting json file',
+                        required=False,
+                        default='')
+    parser.add_argument('-g',
+                        '--gitrepo',
+                        help='The https link to the git repository to clone. If no link was provided, the current directory will be used.',
+                        required=False,
+                        default="")
     args = parser.parse_args()
     if args.version:
         print 'testing game version 1.0.0'
         return
+    project_name = ''
+    if args.gitrepo:
+        project_name = args.gitrepo.split("/")[-1].replace('.git','')
     tests = _find_git_status(args.directory)
+    _write_to_file(tests, project_name, args.save)
     total_tests = 0
     for test_class in tests:
         total_tests += len(test_class['testmethods'])
@@ -140,23 +167,7 @@ def _main():
                                     'class': test_class,
                                     'method': test_method })
             print "    - %(c)d lines in %(m)s." % { 'c': test_LOC,
-                                                    'm': test_method}
-    # sorted_flattened_list = sorted(flattened_list, key=lambda test: test['loc'])
-    # sorted_locs = [testmethod['loc'] for testmethod in sorted_flattened_list]
-    # median = np.percentile(np.array(sorted_locs), [25, 50, 75])
-    # print sorted_locs
-    # print median
-
-    # upper_filtered_list = map(lambda threshold: filter(lambda test_object: test_object['loc'] > threshold, sorted_flattened_list), median)
-    # for index, item in enumerate(upper_filtered_list):
-    #     next_index = index + 1
-    #     if next_index < len(upper_filtered_list):
-    #         upper_filtered_list[index] = filter(lambda test_object: test_object['loc'] <= median[next_index], item)
-    # for x in upper_filtered_list:
-    #     if x:
-    #         print random.choice(x)
-    #     else:
-    #         print "Empty array because quartiles are too small"
+                                                    'm': test_method['method']}
 
 if __name__ == "__main__":
     _main()
