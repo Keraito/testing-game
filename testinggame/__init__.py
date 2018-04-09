@@ -23,6 +23,8 @@
 import argparse
 import os
 import subprocess
+import numpy as np
+import random
 
 def _find_java_tests(blame_lines):
     """
@@ -41,6 +43,7 @@ def _find_java_tests(blame_lines):
     counter = 0
     next_is_test_statement = False
     test_name = ""
+    improved_current_tests = []
     for blame_line in blame_lines:
         separator = blame_line.find(')')
         blame_code_nospaces = blame_line[separator+1:]
@@ -49,6 +52,7 @@ def _find_java_tests(blame_lines):
         blame_code_nospaces = blame_code_nospaces.replace('\t', '')
         if blame_code_nospaces.startswith('}') and next_is_test_statement:
             next_is_test_statement = False
+            improved_current_tests.append({ "method": test_name, "loc": counter })
             current_tests[test_name] = counter
             # print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
             counter = 0
@@ -60,7 +64,7 @@ def _find_java_tests(blame_lines):
             next_is_test = False
         else:
             next_is_test = blame_code_nospaces.startswith('@Test')
-    return current_tests
+    return improved_current_tests
 
 def _get_test_name(blame_line):
     return [i for i in blame_line.split() if "()" in i][0][:-2]
@@ -78,6 +82,7 @@ def _find_git_status(directory):
         key and dictionary, with the test method as the key and the LOC as a value, as a value.
     """
     tests = {}
+    improved_tests = []
     java_extensions = ['.java']
     valid_extensions = java_extensions
     for root, dirs, files in os.walk(directory):
@@ -94,10 +99,13 @@ def _find_git_status(directory):
                         out, err = p.communicate()
                         blame_lines = out.splitlines()
                         if fileextension in java_extensions:
-                            tests[filename] = _find_java_tests(blame_lines)
+                            current_tests = _find_java_tests(blame_lines)
+                            if current_tests:
+                                improved_tests.append({ 'class': filename, 'testmethods': current_tests })
+                                tests[filename] = current_tests
                 except:
                     'Could not open file: ' + absfile
-    return tests
+    return improved_tests
 
 
 def _main():
@@ -120,14 +128,35 @@ def _main():
     tests = _find_git_status(args.directory)
     total_tests = 0
     for test_class in tests:
-        total_tests += len(tests[test_class])
+        total_tests += len(test_class['testmethods'])
     print "Total Tests: %(t)d" % {'t': total_tests}
     print "-------------------------------------------"
+    flattened_list = []
     for test_class in tests:
-        print "- %(t)s" % { 't': test_class }
-        for test_method in tests[test_class]:
-            print "    - %(c)d lines in %(m)s." % { 'c': tests[test_class][test_method],
+        print "- %(t)s" % { 't': test_class['class'] }
+        for test_method in test_class['testmethods']:
+            test_LOC = test_method['loc']
+            flattened_list.append({ 'loc': test_LOC,
+                                    'class': test_class,
+                                    'method': test_method })
+            print "    - %(c)d lines in %(m)s." % { 'c': test_LOC,
                                                     'm': test_method}
+    # sorted_flattened_list = sorted(flattened_list, key=lambda test: test['loc'])
+    # sorted_locs = [testmethod['loc'] for testmethod in sorted_flattened_list]
+    # median = np.percentile(np.array(sorted_locs), [25, 50, 75])
+    # print sorted_locs
+    # print median
+
+    # upper_filtered_list = map(lambda threshold: filter(lambda test_object: test_object['loc'] > threshold, sorted_flattened_list), median)
+    # for index, item in enumerate(upper_filtered_list):
+    #     next_index = index + 1
+    #     if next_index < len(upper_filtered_list):
+    #         upper_filtered_list[index] = filter(lambda test_object: test_object['loc'] <= median[next_index], item)
+    # for x in upper_filtered_list:
+    #     if x:
+    #         print random.choice(x)
+    #     else:
+    #         print "Empty array because quartiles are too small"
 
 if __name__ == "__main__":
     _main()
