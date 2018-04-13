@@ -40,25 +40,27 @@ def _find_java_tests(blame_lines):
         key and the number of lines as a value.
     """
     next_is_test = False
-    current_tests = {}
     counter = 0
     next_is_test_statement = False
     test_name = ""
     improved_current_tests = []
     code = []
+    blocks = 0
     for blame_line in blame_lines:
         separator = blame_line.find(')')
         blame_code_nospaces = blame_line[separator+1:]
         blame_code_with_spaces = blame_code_nospaces
         blame_code_nospaces = blame_code_nospaces.replace(' ', '')
         blame_code_nospaces = blame_code_nospaces.replace('\t', '')
-        if blame_code_nospaces.startswith('}') and next_is_test_statement:
+        if '{' in blame_code_nospaces:
+            blocks += 1
+        if '}' in blame_code_nospaces:
+            blocks -= 1
+        if blocks == 0 and next_is_test_statement:
             next_is_test_statement = False
             code.append(blame_code_with_spaces)
             improved_current_tests.append({ "method": test_name, "loc": counter, "code": code })
             code = []
-            current_tests[test_name] = counter
-            # print "Test %(n)s has %(i)d lines." % {'n': test_name,'i': counter }
             counter = 0
         if next_is_test_statement:
             counter += 1
@@ -95,7 +97,7 @@ def _find_git_status(directory):
         for name in files:
             filename, fileextension = os.path.splitext(name)
             absfile = os.path.join(root, name)
-            if fileextension in valid_extensions:
+            if fileextension in valid_extensions and ("test" in absfile or "Test" in absfile):
                 try:
                     with open(absfile) as sourcefile:
                         source = sourcefile.read()
