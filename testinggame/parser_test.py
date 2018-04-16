@@ -88,6 +88,44 @@ def testParserToParseCodeInSmallSetupExample():
   parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
   assert testinggame._find_java_tests(smallSetupExample['code'])[0][property] == parsedExpectedCode
 
+def testParserToParseNameInEasyExampleNonPublic():
+  assertProperty("method", easyExampleNonPublic)
+
+def testParserToParseTheLocInEasyExampleNonPublic():
+  assertProperty("loc", easyExampleNonPublic)
+
+def testParserToParseTheCodeInEasyExampleNonPublic():
+  assertProperty("code", easyExampleNonPublic)
+
+def testParserToParseNameInSmallNonPublicSetupExample():
+  assertProperty("method", smallNonPublicSetupExample)
+
+def testParserToParseLocInSmallNonPublicSetupExample():
+  assertProperty("loc", smallNonPublicSetupExample)
+
+def testParserToParseCodeInSmallNonPublicSetupExample():
+  expectedCode = {
+    "code": [
+      ")    @Test",
+      ")    void testSetupExample() {",
+      ")        Square[][] grid = new Square[6][4];",
+      ")        for (int x = 0; x < grid.length; x++) {",
+      ")            for (int y = 0; y < grid[x].length; y++) {",
+      ")                grid[x][y] = new BasicSquare();",
+      ")            }",
+      ")        }",
+      ")        board = new Board(grid);",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")    }"]
+  }
+  property = 'code'
+  parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
+  assert testinggame._find_java_tests(smallNonPublicSetupExample['code'])[0][property] == parsedExpectedCode
+
 def assertProperty(property, expectation):
   assertAgainst = expectation[property]
   if property == "code":
@@ -98,6 +136,20 @@ easyExample = {
   'code': [
     ")    @Test",
     ")    public void testExample2() {",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")    }"],
+  'loc': 5,
+  'method': 'testExample2'
+  }
+
+easyExampleNonPublic = {
+  'code': [
+    ")    @Test",
+    ")    void testExample2() {",
     ")        Assert.assertEquals(0, 0);",
     ")",
     ")        Assert.assertEquals(0, 0);",
@@ -215,6 +267,36 @@ smallSetupExample = {
     ")",
     ")    @Test",
     ")    public void testSetupExample() {",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")    }",
+    ")  }"],
+  'loc': 12,
+  'method': 'testSetupExample'
+  }
+
+smallNonPublicSetupExample = {
+  'code': [
+    ")  package com.spotify.thing;",
+    ")",
+    ")  public class ExampleTest {",
+    ")",
+    ")    @BeforeEach",
+    ")    void setup() {",
+    ")        Square[][] grid = new Square[6][4];",
+    ")        for (int x = 0; x < grid.length; x++) {",
+    ")            for (int y = 0; y < grid[x].length; y++) {",
+    ")                grid[x][y] = new BasicSquare();",
+    ")            }",
+    ")        }",
+    ")        board = new Board(grid);",
+    ")    }",
+    ")",
+    ")    @Test",
+    ")    void testSetupExample() {",
     ")        Assert.assertEquals(0, 0);",
     ")",
     ")        Assert.assertEquals(0, 0);",

@@ -77,7 +77,7 @@ def _find_java_tests(blame_lines):
             else: 
                 counter += 1
                 code.append(blame_code_with_spaces)
-        if blame_code_nospaces.startswith('publicvoid'):
+        if blame_code_nospaces.startswith('publicvoid') or blame_code_nospaces.startswith('void'):
             if next_is_test:
                 test_name = _get_test_name(blame_code_with_spaces)
                 code.append(blame_code_with_spaces)
