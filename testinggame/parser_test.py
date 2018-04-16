@@ -37,6 +37,56 @@ def testParserToParseTheLocInMultipleBlockTwoTimesNestedExample():
 def testParserToParseTheCodeInMultipleBlockTwoTimesNestedExample():
   assertProperty("code", multipleBlockTwoTimesNestedExample)
 
+def testParserToParseNameInTestInClassExample():
+  assertProperty("method", testInClassExample)
+
+def testParserToParseLocInTestInClassExample():
+  assertProperty("loc", testInClassExample)
+
+def testParserToParseCodeInTestInClassExample():
+  expectedCode = {
+    'code': [
+      ")    @Test",
+      ")    public void testInClassExample() {",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")    }"]
+  }
+  property = 'code'
+  parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
+  assert testinggame._find_java_tests(testInClassExample['code'])[0][property] == parsedExpectedCode
+
+def testParserToParseNameInSmallSetupExample():
+  assertProperty("method", smallSetupExample)
+
+def testParserToParseLocInSmallSetupExample():
+  assertProperty("loc", smallSetupExample)
+
+def testParserToParseCodeInSmallSetupExample():
+  expectedCode = {
+    "code": [
+      ")    @Test",
+      ")    public void testSetupExample() {",
+      ")        Square[][] grid = new Square[6][4];",
+      ")        for (int x = 0; x < grid.length; x++) {",
+      ")            for (int y = 0; y < grid[x].length; y++) {",
+      ")                grid[x][y] = new BasicSquare();",
+      ")            }",
+      ")        }",
+      ")        board = new Board(grid);",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")",
+      ")        Assert.assertEquals(0, 0);",
+      ")    }"]
+  }
+  property = 'code'
+  parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
+  assert testinggame._find_java_tests(smallSetupExample['code'])[0][property] == parsedExpectedCode
 
 def assertProperty(property, expectation):
   assertAgainst = expectation[property]
@@ -116,3 +166,62 @@ multipleBlockTwoTimesNestedExample = {
   "method": "testOnCompletedThrows3",
   "loc": 12
 }
+
+testInClassExample = {
+  'code': [
+    ")  package com.spotify.thing;",
+    ")",
+    ")  public class ExampleTest {",
+    ")",
+    ")    @Test",
+    ")    public void testInClassExample() {",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")    }",
+    ")",
+    ")    public void setup() {",
+    ")        Square[][] grid = new Square[6][4];",
+    ")        for (int x = 0; x < grid.length; x++) {",
+    ")            for (int y = 0; y < grid[x].length; y++) {",
+    ")                grid[x][y] = new BasicSquare();",
+    ")            }",
+    ")        }",
+    ")        board = new Board(grid);",
+    ")    }",
+    ")  }"],
+  'loc': 5,
+  'method': 'testInClassExample'
+  }
+
+smallSetupExample = {
+  'code': [
+    ")  package com.spotify.thing;",
+    ")",
+    ")  public class ExampleTest {",
+    ")",
+    ")    @BeforeEach",
+    ")    public void setup() {",
+    ")        Square[][] grid = new Square[6][4];",
+    ")        for (int x = 0; x < grid.length; x++) {",
+    ")            for (int y = 0; y < grid[x].length; y++) {",
+    ")                grid[x][y] = new BasicSquare();",
+    ")            }",
+    ")        }",
+    ")        board = new Board(grid);",
+    ")    }",
+    ")",
+    ")    @Test",
+    ")    public void testSetupExample() {",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")",
+    ")        Assert.assertEquals(0, 0);",
+    ")    }",
+    ")  }"],
+  'loc': 12,
+  'method': 'testSetupExample'
+  }

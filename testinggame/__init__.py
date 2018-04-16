@@ -39,13 +39,18 @@ def _find_java_tests(blame_lines):
         A dictionary built off the test class containing the test method name as a
         key and the number of lines as a value.
     """
-    next_is_test = False
-    counter = 0
-    next_is_test_statement = False
     test_name = ""
-    improved_current_tests = []
+    next_is_test = False
+    next_is_test_statement = False
+    counter = 0
     code = []
+    improved_current_tests = []
     blocks = 0
+    next_is_setup_method = False
+    next_is_setup_statement = False
+    setup_count = 0
+    setup_code = []
+    setup_count = 0
     for blame_line in blame_lines:
         separator = blame_line.find(')')
         blame_code_nospaces = blame_line[separator+1:]
@@ -56,22 +61,37 @@ def _find_java_tests(blame_lines):
             blocks += 1
         if '}' in blame_code_nospaces:
             blocks -= 1
-        if blocks == 0 and next_is_test_statement:
-            next_is_test_statement = False
-            code.append(blame_code_with_spaces)
-            improved_current_tests.append({ "method": test_name, "loc": counter, "code": code })
-            code = []
-            counter = 0
+        if next_is_setup_statement:
+            if blocks == 0 and "}" in blame_code_nospaces:
+                next_is_setup_statement = False
+                setup_count = len(setup_code)
+            else:
+                setup_code.append(blame_code_with_spaces)
         if next_is_test_statement:
-            counter += 1
-            code.append(blame_code_with_spaces)
-        if next_is_test or blame_code_nospaces.startswith('publicvoidtest'):
-            test_name = _get_test_name(blame_code_with_spaces)
-            code.append(blame_code_with_spaces)
-            next_is_test_statement = True
-            next_is_test = False
+            if blocks == 0 and "}" in blame_code_nospaces:
+                next_is_test_statement = False
+                code.append(blame_code_with_spaces)
+                improved_current_tests.append({ "method": test_name, "loc": counter + setup_count, "code": code })
+                code = []
+                counter = 0
+            else: 
+                counter += 1
+                code.append(blame_code_with_spaces)
+        if blame_code_nospaces.startswith('publicvoid'):
+            if next_is_test:
+                test_name = _get_test_name(blame_code_with_spaces)
+                code.append(blame_code_with_spaces)
+                code = code + setup_code
+                next_is_test_statement = True
+                next_is_test = False
+                blocks = 1
+            if next_is_setup_method:
+                next_is_setup_statement = True
+                next_is_setup_method = False
+                blocks = 1
         else:
             next_is_test = blame_code_nospaces.startswith('@Test')
+            next_is_setup_method = blame_code_nospaces.startswith("@BeforeEach")
     return improved_current_tests
 
 def _get_test_name(blame_line):
