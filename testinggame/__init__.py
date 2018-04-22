@@ -64,7 +64,7 @@ def _find_java_tests(blame_lines):
         if next_is_setup_statement:
             if blocks == 0 and "}" in blame_code_nospaces:
                 next_is_setup_statement = False
-                setup_count = len(setup_code)
+                setup_count = _acount_actual_locs(setup_code)
             else:
                 setup_code.append(blame_code_with_spaces)
         if next_is_test_statement:
@@ -78,13 +78,15 @@ def _find_java_tests(blame_lines):
                 if blame_code_with_spaces.endswith("();") and "." not in blame_code_with_spaces:
                     if _get_method_call_name(blame_code_with_spaces, 3) in [t["method"] for t in improved_current_tests]:
                         called_method_code = [t["code"] for t in improved_current_tests][[t["method"] for t in improved_current_tests].index(_get_method_call_name(blame_code_with_spaces, 3))][1:-1]
-                        counter += len(called_method_code)
+                        counter += _acount_actual_locs(called_method_code)
                         code = code + called_method_code
                     else:
-                        counter += 1
+                        if blame_code_nospaces:
+                            counter += 1
                         code.append(blame_code_with_spaces)
                 else:
-                    counter += 1
+                    if blame_code_nospaces:
+                        counter += 1
                     code.append(blame_code_with_spaces)
         if blame_code_nospaces.startswith('publicvoid') or blame_code_nospaces.startswith('void'):
             if next_is_test:
@@ -106,8 +108,14 @@ def _find_java_tests(blame_lines):
         for x in improved_current_tests:
             c = x['code']
             x['code'] = c[0:1] + setup_code + c[1:]
-            x['loc'] += len(setup_code)
+            x['loc'] += _acount_actual_locs(setup_code)
     return improved_current_tests
+
+def _acount_actual_locs(code):
+    return len(_with_no_empty_lines([x.replace(' ', '').replace('\t', '') for x in code]))
+
+def _with_no_empty_lines(code):
+    return [c for c in code if c]
 
 def _get_method_call_name(blame_line, sliced):
     return _get_test_name(blame_line, sliced)

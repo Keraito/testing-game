@@ -203,7 +203,7 @@ easyExample = {
     ")",
     ")        Assert.assertEquals(0, 0);",
     ")    }"],
-  'loc': 5,
+  'loc': 3,
   'method': 'testExample2'
   }
 
@@ -217,7 +217,7 @@ easyExampleNonPublic = {
     ")",
     ")        Assert.assertEquals(0, 0);",
     ")    }"],
-  'loc': 5,
+  'loc': 3,
   'method': 'testExample2'
   }
 
@@ -256,7 +256,7 @@ multipleBlockNestedExample = {
     ")        }",
     ")    }"],
   "method": "testOnCompletedThrows3",
-  "loc": 13
+  "loc": 12
 }
 
 multipleBlockTwoTimesNestedExample = {
@@ -305,7 +305,7 @@ testInClassExample = {
     ")        board = new Board(grid);",
     ")    }",
     ")  }"],
-  'loc': 5,
+  'loc': 3,
   'method': 'testInClassExample'
   }
 
@@ -335,7 +335,7 @@ smallSetupExample = {
     ")        Assert.assertEquals(0, 0);",
     ")    }",
     ")  }"],
-  'loc': 12,
+  'loc': 10,
   'method': 'testSetupExample'
   }
 
@@ -365,7 +365,7 @@ smallNonPublicSetupExample = {
     ")        Assert.assertEquals(0, 0);",
     ")    }",
     ")  }"],
-  'loc': 12,
+  'loc': 10,
   'method': 'testSetupExample'
   }
 
@@ -395,7 +395,7 @@ smallReferenceExample = {
     ")        assertThat(game.isInProgress()).isFalse();",
     ")    }",
     ")  }"],
-  'loc': 11,
+  'loc': 9,
   'method': 'win'
   }
   
@@ -431,6 +431,6 @@ bigReferenceExample = {
     ")        verify(level).stop();",
     ")    }",
     ")  }"],
-  'loc': 14,
+  'loc': 12,
   'method': 'stop'
   }
