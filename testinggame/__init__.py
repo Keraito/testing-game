@@ -71,7 +71,7 @@ def _find_java_tests(blame_lines):
             if blocks == 0 and "}" in blame_code_nospaces:
                 next_is_test_statement = False
                 code.append(blame_code_with_spaces)
-                improved_current_tests.append({ "method": test_name, "loc": counter + setup_count, "code": code })
+                improved_current_tests.append({ "method": test_name, "loc": counter, "code": code })
                 code = []
                 counter = 0
             else: 
@@ -90,7 +90,7 @@ def _find_java_tests(blame_lines):
             if next_is_test:
                 test_name = _get_test_name(blame_code_with_spaces)
                 code.append(blame_code_with_spaces)
-                code = code + setup_code
+                # code = code + setup_code
                 next_is_test_statement = True
                 next_is_test = False
                 blocks = 1
@@ -101,6 +101,12 @@ def _find_java_tests(blame_lines):
         else:
             next_is_test = blame_code_nospaces.startswith('@Test')
             next_is_setup_method = blame_code_nospaces.startswith("@BeforeEach") or blame_code_nospaces.startswith("@Before")
+    
+    if setup_code:
+        for x in improved_current_tests:
+            c = x['code']
+            x['code'] = c[0:1] + setup_code + c[1:]
+            x['loc'] += len(setup_code)
     return improved_current_tests
 
 def _get_method_call_name(blame_line, sliced):
