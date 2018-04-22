@@ -75,8 +75,17 @@ def _find_java_tests(blame_lines):
                 code = []
                 counter = 0
             else: 
-                counter += 1
-                code.append(blame_code_with_spaces)
+                if blame_code_with_spaces.endswith("();") and "." not in blame_code_with_spaces:
+                    if _get_method_call_name(blame_code_with_spaces, 3) in [t["method"] for t in improved_current_tests]:
+                        called_method_code = [t["code"] for t in improved_current_tests][[t["method"] for t in improved_current_tests].index(_get_method_call_name(blame_code_with_spaces, 3))][1:-1]
+                        counter += len(called_method_code)
+                        code = code + called_method_code
+                    else:
+                        counter += 1
+                        code.append(blame_code_with_spaces)
+                else:
+                    counter += 1
+                    code.append(blame_code_with_spaces)
         if blame_code_nospaces.startswith('publicvoid') or blame_code_nospaces.startswith('void'):
             if next_is_test:
                 test_name = _get_test_name(blame_code_with_spaces)
@@ -91,11 +100,14 @@ def _find_java_tests(blame_lines):
                 blocks = 1
         else:
             next_is_test = blame_code_nospaces.startswith('@Test')
-            next_is_setup_method = blame_code_nospaces.startswith("@BeforeEach")
+            next_is_setup_method = blame_code_nospaces.startswith("@BeforeEach") or blame_code_nospaces.startswith("@Before")
     return improved_current_tests
 
-def _get_test_name(blame_line):
-    return [i for i in blame_line.split() if "()" in i][0][:-2]
+def _get_method_call_name(blame_line, sliced):
+    return _get_test_name(blame_line, sliced)
+
+def _get_test_name(blame_line, sliced = 2):
+    return [i for i in blame_line.split() if "()" in i][0][:-sliced]
 
 def _find_git_status(directory):
     """

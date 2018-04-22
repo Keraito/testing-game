@@ -103,7 +103,7 @@ def testParserToParseNameInSmallNonPublicSetupExample():
 def testParserToParseLocInSmallNonPublicSetupExample():
   assertProperty("loc", smallNonPublicSetupExample)
 
-def testParserToParseCodeInSmallNonPublicSetupExample():
+def testParserToParseCodeInSmallReferenceExample():
   expectedCode = {
     "code": [
       ")    @Test",
@@ -126,11 +126,72 @@ def testParserToParseCodeInSmallNonPublicSetupExample():
   parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
   assert testinggame._find_java_tests(smallNonPublicSetupExample['code'])[0][property] == parsedExpectedCode
 
-def assertProperty(property, expectation):
+
+def testParserToParseNameInSmallReferenceExample():
+  assertProperty("method", smallReferenceExample, 1)
+
+def testParserToParseLocInSmallReferenceExample():
+  assertProperty("loc", smallReferenceExample, 1)
+
+def testParserToParseCodeInSmallReferenceExample():
+  expectedCode = {
+    "code": [
+      ")    @Test",
+      ")    void win() {",
+      ")        final int randomPoints = 42;",
+      ")        when(level.isAnyPlayerAlive()).thenReturn(true);",
+      ")        when(level.remainingPellets()).thenReturn(randomPoints);",
+      ")",
+      ")        game.start();",
+      ")",
+      ")        verify(level).start();",
+      ")        verify(level).addObserver(game);",
+      ")        assertThat(game.isInProgress()).isTrue();",
+      ")        game.levelWon();",
+      ")        assertThat(game.isInProgress()).isFalse();",
+      ")    }"]
+  }
+  property = 'code'
+  parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
+  assert testinggame._find_java_tests(smallReferenceExample['code'])[1][property] == parsedExpectedCode
+
+def testParserToParseNameInBigReferenceExample():
+  assertProperty("method", bigReferenceExample, 1)
+
+def testParserToParseLocInBigReferenceExample():
+  assertProperty("loc", bigReferenceExample, 1)
+
+def testParserToParseCodeInBigReferenceExample():
+  expectedCode = {
+    "code": [
+      ")    @Test",
+      ")    void stop() {",
+      ")        MockitoAnnotations.initMocks(this);",
+      ")        game = new SinglePlayerGame(player, level);",
+      ")        final int randomPoints = 42;",
+      ")        when(level.isAnyPlayerAlive()).thenReturn(true);",
+      ")        when(level.remainingPellets()).thenReturn(randomPoints);",
+      ")",
+      ")        game.start();",
+      ")",
+      ")        verify(level).start();",
+      ")        verify(level).addObserver(game);",
+      ")        assertThat(game.isInProgress()).isTrue();",
+      ")        game.stop();",
+      ")        assertThat(game.isInProgress()).isFalse();",
+      ")        verify(level).stop();",
+      ")    }"
+    ]
+  }
+  property = 'code'
+  parsedExpectedCode = [line[line.find(')')+1:] for line in expectedCode[property][1:]]
+  assert testinggame._find_java_tests(bigReferenceExample['code'])[1][property] == parsedExpectedCode
+
+def assertProperty(property, expectation, i = 0):
   assertAgainst = expectation[property]
   if property == "code":
     assertAgainst = [line[line.find(')')+1:] for line in expectation[property][1:]]
-  assert testinggame._find_java_tests(expectation['code'])[0][property] == assertAgainst
+  assert testinggame._find_java_tests(expectation['code'])[i][property] == assertAgainst
 
 easyExample = {
   'code': [
@@ -306,4 +367,70 @@ smallNonPublicSetupExample = {
     ")  }"],
   'loc': 12,
   'method': 'testSetupExample'
+  }
+
+smallReferenceExample = {
+  'code': [
+    ")  package com.spotify.thing;",
+    ")",
+    ")  public class ExampleTest {",
+    ")",
+    ")    @Test",
+    ")    void freshStart() {",
+    ")        final int randomPoints = 42;",
+    ")        when(level.isAnyPlayerAlive()).thenReturn(true);",
+    ")        when(level.remainingPellets()).thenReturn(randomPoints);",
+    ")",
+    ")        game.start();",
+    ")",
+    ")        verify(level).start();",
+    ")        verify(level).addObserver(game);",
+    ")        assertThat(game.isInProgress()).isTrue();",
+    ")    }",
+    ")",
+    ")    @Test",
+    ")    void win() {",
+    ")        freshStart();",
+    ")        game.levelWon();",
+    ")        assertThat(game.isInProgress()).isFalse();",
+    ")    }",
+    ")  }"],
+  'loc': 11,
+  'method': 'win'
+  }
+  
+bigReferenceExample = {
+  'code': [
+    ")  package com.spotify.thing;",
+    ")",
+    ")  public class ExampleTest {",
+    ")",
+    ")    @BeforeEach",
+    ")    void setUp() {",
+    ")        MockitoAnnotations.initMocks(this);",
+    ")        game = new SinglePlayerGame(player, level);",
+    ")    }",
+    ")    @Test",
+    ")    void freshStart() {",
+    ")        final int randomPoints = 42;",
+    ")        when(level.isAnyPlayerAlive()).thenReturn(true);",
+    ")        when(level.remainingPellets()).thenReturn(randomPoints);",
+    ")",
+    ")        game.start();",
+    ")",
+    ")        verify(level).start();",
+    ")        verify(level).addObserver(game);",
+    ")        assertThat(game.isInProgress()).isTrue();",
+    ")    }",
+    ")",
+    ")    @Test",
+    ")    void stop() {",
+    ")        freshStart();",
+    ")        game.stop();",
+    ")        assertThat(game.isInProgress()).isFalse();",
+    ")        verify(level).stop();",
+    ")    }",
+    ")  }"],
+  'loc': 14,
+  'method': 'stop'
   }
